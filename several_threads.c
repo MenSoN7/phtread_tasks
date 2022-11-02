@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
     free(p);
     free(intervals);
 
+    fclose(file);
     return 0;
 }
 
