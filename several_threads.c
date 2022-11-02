@@ -1,5 +1,5 @@
-/* Программа считает сумму делителей всех чисел в промежутке от P до Q, которые передаются через аргументы 
-Ипользуются 2 потока */ 
+/* Программа считает сумму делителей всех чисел в интервалах, которые генерирует программа interval_generator
+Ипользуются несколько потоков */ 
 
 #include <pthread.h>
 #include <stdio.h>
@@ -20,46 +20,40 @@ void number_divisors(long int n); // функция для подсчета су
 void *thread_job(void *param); // потоковая функция
 
 int main(int argc, char *argv[]) {
-
-    if (argc != 3)
-    {
-        printf("Неверное количество аргументов!\n");
-        return -1;
-    }
-
-    if (atoi(argv[1]) > atoi(argv[2]))
-    {
-        printf("Первый аргумент должен быть меньше второго!\n");
-        return -1;
-    }
-
-    //узнаем количество ядер
-    long int count_of_cores = sysconf(_SC_NPROCESSORS_CONF);
-
-    //выделение памяти для n-ого количества интервалов, где n - количество ядер
-    //(переменная count_of_cores)
+    FILE* file=fopen("intervals.txt", "r");
+    
+    //количество строк в файле - количество интервалов
+    int count_of_lines=0;
+    rewind(file);
+    while(!feof(file))
+    {   
+       if (fgetc(fd) == '\n') 
+           ++count_of_lines;
+    }    
+    
+    //выделение памяти для n-ого количества интервалов, где n - количество строк в файле
+    //(переменная count_of_lines)
     interval_t* intervals;
-    intervals = (interval_t *) malloc(count_of_cores * sizeof(interval_t));
+    intervals = (interval_t *) malloc(count_of_lines * sizeof(interval_t));
 
-    //выделение памяти для n-ого количества потоков, где n - количество ядер
-    //(переменная count_of_cores)
+    //выделение памяти для n-ого количества потоков, где n - количество строк в файле
+    //(переменная count_of_lines)
     pthread_t *p;
-    p = (pthread_t *) malloc(count_of_cores * sizeof(pthread_t));
-
-    long int P = atoi(argv[1]);
-    long int Q = atoi(argv[2]);
-
+    p = (pthread_t *) malloc(count_of_lines * sizeof(pthread_t));
+    
     //инициализация мьютекса
     pthread_mutex_init(&mutex,NULL);
-
-    for (int i=0; i < count_of_cores; ++i)
+     
+    //указатель на начало файла
+    rewind(file);
+    //считываем интервалы из файла и создаем потоки
+    for(int i=0;i<count_of_lines;++i)
     {
-        intervals[i].p = P+i;
-        intervals[i].q = Q;
+        fscanf(file,"%ld %ld",&intervals[i].p,&intervals[i].q);
         pthread_create(&p[i],NULL,thread_job,&intervals[i]);
     }
 
-    for(int i=0; i < count_of_cores ; ++i)
+    for(int i=0; i < count_of_lines ; ++i)
         pthread_join(p[i],NULL);
 
     pthread_mutex_destroy(&mutex);
@@ -75,10 +69,8 @@ int main(int argc, char *argv[]) {
 // Потоковая функция
 void *thread_job(void *interval)
 {
-    //узнаем количество ядер
-    long int count_of_cores = sysconf(_SC_NPROCESSORS_CONF);
     interval_t*  interval_= (interval_t*) interval;
-    for (long int i = interval_->p; i <= interval_->q; i+=count_of_cores)
+    for (long int i = interval_->p; i <= interval_->q; ++i)
     {
         number_divisors(i);
     }
