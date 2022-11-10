@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     rewind(file);
     while(!feof(file))
     {   
-       if (fgetc(fd) == '\n') 
+       if (fgetc(file) == '\n') 
            ++count_of_lines;
     }    
     
