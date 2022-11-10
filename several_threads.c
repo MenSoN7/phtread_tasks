@@ -2,9 +2,16 @@
 Ипользуются несколько потоков */ 
 
 #include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 long long int sum = 0; // общие данные для потоков  - переменная для подсчета суммы делителей
@@ -20,50 +27,91 @@ void number_divisors(long int n); // функция для подсчета су
 void *thread_job(void *param); // потоковая функция
 
 int main(int argc, char *argv[]) {
-    FILE* file=fopen("intervals.txt", "r");
+  
+  //дескрипторы для пассивного(слушающего) и присоединенного сокетов
+  int sockfd, newsockfd;
+  int clilen, n;
+  long int count = sysconf(_SC_NPROCESSORS_CONF);
+  //структуры для размещения полных адресов сервера и клиента
+  struct sockaddr_in servaddr, cliaddr;
+  //создаем TCP-сокет
+  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    perror(NULL);
+    close(sockfd);
+    exit(1);
+  }
+  //обнуляем всю структуру перед заполнением
+  memset(&servaddr, 0, sizeof(servaddr));
+  //заполняем структуру для адреса сервера
+  servaddr.sin_family = AF_INET; //семейство
+  servaddr.sin_port = htons(51000);//номер порта
+  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     
-    //количество строк в файле - количество интервалов
-    int count_of_lines=0;
-    rewind(file);
-    while(!feof(file))
-    {   
-       if (fgetc(file) == '\n') 
-           ++count_of_lines;
-    }    
-    
-    //выделение памяти для n-ого количества интервалов, где n - количество строк в файле
+  //связываем созданный сокет с адресом (3 параметр - размер структуры в байтах)
+  if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+    perror(NULL);
+    close(sockfd);
+    exit(1);
+  }
+  //переводим сокет в пассивное состояние
+  // второй параметр - кол-во одновременных подключений
+  if (listen(sockfd, 5) < 0) {
+    perror(NULL);
+    close(sockfd);
+    exit(1);
+  }
+  // заносим в clilen максимальную длину ожидаемого адреса клиента
+  clilen = sizeof(cliaddr);
+  // принимаем соединение на сокете
+  // при нормальном завершении в структуре будет адрес, а в clilen - фактическая длина
+  if ((newsockfd = accept(sockfd, (struct sockaddr *)&cliaddr, &clilen)) < 0) {
+    perror(NULL);
+    close(sockfd);
+    exit(1);
+  }
+  
+    //read(newsockfd, &count, sizeof(count));
+  
+    //выделение памяти для интервалов
     //(переменная count_of_lines)
     interval_t* intervals;
-    intervals = (interval_t *) malloc(count_of_lines * sizeof(interval_t));
+    intervals = (interval_t *) malloc(count * sizeof(interval_t));
 
-    //выделение памяти для n-ого количества потоков, где n - количество строк в файле
+    //выделение памяти для  потоков
     //(переменная count_of_lines)
     pthread_t *p;
-    p = (pthread_t *) malloc(count_of_lines * sizeof(pthread_t));
+    p = (pthread_t *) malloc(count * sizeof(pthread_t));
     
     //инициализация мьютекса
     pthread_mutex_init(&mutex,NULL);
      
-    //указатель на начало файла
-    rewind(file);
+    
     //считываем интервалы из файла и создаем потоки
-    for(int i=0;i<count_of_lines;++i)
+    for(int i=0;i<count;++i)
     {
-        fscanf(file,"%ld %ld",&intervals[i].p,&intervals[i].q);
+        n=read(newsockfd, &intervals[i],sizeof(intervals[i]));
+        //если при чтении возникла ошибка - завершаем работу
+        if (n < 0) {
+          perror(NULL);
+          close(sockfd);
+          close(newsockfd);
+          exit(1);
+        }
         pthread_create(&p[i],NULL,thread_job,&intervals[i]);
     }
 
-    for(int i=0; i < count_of_lines ; ++i)
+    for(int i=0; i < count ; ++i)
         pthread_join(p[i],NULL);
 
     pthread_mutex_destroy(&mutex);
+   // write(newsockfd,&sum,sizeof(sum));
     printf("Count of divisors = %lld\n", sum);
 
     //освобождаем выделенную память
     free(p);
     free(intervals);
-
-    fclose(file);
+    close(sockfd);
+    close(newsockfd);
     return 0;
 }
 
