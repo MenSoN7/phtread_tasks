@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(&mutex,NULL);
      
     
-    //считываем интервалы из файла и создаем потоки
+    //считываем интервалы из сокета и создаем потоки
     for(int i=0;i<count;++i)
     {
         n=read(newsockfd, &intervals[i],sizeof(intervals[i]));
