@@ -27,7 +27,6 @@ void* thread_job(void* param); // потоковая функция
 
 int main(int argc, char* argv[])
 {
-
     //дескрипторы для пассивного(слушающего) и присоединенного сокетов
     int sockfd, newsockfd;
     int clilen, n;
