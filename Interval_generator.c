@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 
         for (int i = 1; i < count_of_cores; ++i) {
             intervals[i].p = i * (count_of_numbers / count_of_cores) + 1;
-            if (i != count_of_cores -1)
+            if (i != count_of_cores - 1)
                 intervals[i].q = (i + 1) * (count_of_numbers / count_of_cores);
             else
                 intervals[i].q = q;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
         for (int i = 1; i < count_of_cores; ++i) {
             // вторая граница интервала  = Q - в случае последней итерации и = p+ (i + 1) *(count_of_numbers / count_of_cores) в других случаях
             intervals[i].p = i * (count_of_numbers / count_of_cores) + 1 + atoi(argv[2]);
-            if (i != count_of_cores -1)
+            if (i != count_of_cores - 1)
                 intervals[i].q = p + (i + 1) * (count_of_numbers / count_of_cores);
             else
                 intervals[i].q = q;
